@@ -1,0 +1,132 @@
+SYS:		UNIX/Linux ELF support
+tools:		IDA pro 9.3, ImHex, WSL
+file extension:	.out
+...............
+
+# SETUP ENVIRONMENT
+
+Because the file extension is '.out' we have to use WSL (Windows Subsystem for Linux).
+To launch it we need to launch WSL, we can use the 'wsl' command in PS or cmd.
+give file permission with 'chmod +x system.out' command.
+
+
+# GETTING THE FLAG
+First lets look at the ELF file and proove it.
+	> Open file thru ImHex and look at the firs 16 bytes.
+
+1. You will see: 7F 45 4C 46 -> '\xELF', but the crackme could be mimicing the ELF, so lets go further.
+2. The next byte should be 0x02 or 0x01 - you should see 0x02, witch meens x64 architecture.
+3. Look at the 5th byte its a data encoding byte, should be 0x01.
+4. The last we need is 6th byte - it should be set to 0x01 (Must be 0x01 for original ELF version).
+
+If all this true lets continue:
+	> Open the 'system.out' thru IDA. it should auto detect what its an ELF file.
+
+first of all i sugest to look at psuedocode
+
+int __fastcall main(int argc, const char **argv, const char **envp)
+{
+  int j; // [rsp+0h] [rbp-120h]
+  int i_pass_len_in; // [rsp+4h] [rbp-11Ch]
+  char *endptr; // [rsp+8h] [rbp-118h] BYREF
+  unsigned __int64 i; // [rsp+10h] [rbp-110h]
+  char *pass_buffer; // [rsp+18h] [rbp-108h]
+  size_t v9; // [rsp+20h] [rbp-100h]
+  unsigned __int64 v10; // [rsp+28h] [rbp-F8h]
+  __int64 secret; // [rsp+30h] [rbp-F0h]
+  FILE *stream; // [rsp+38h] [rbp-E8h]
+  char v13[13]; // [rsp+43h] [rbp-DDh] BYREF
+  char pass_len_in[32]; // [rsp+50h] [rbp-D0h] BYREF
+  char pass_in[64]; // [rsp+70h] [rbp-B0h] BYREF
+  char v16[104]; // [rsp+B0h] [rbp-70h] BYREF
+  unsigned __int64 v17; // [rsp+118h] [rbp-8h]
+
+  v17 = __readfsqword(0x28u);
+  pass_buffer = (char *)calloc(90u, 1u);
+  for ( i = 0; i <= 12; ++i )
+    pass_buffer[i + 60] = obf_bytes[i] ^ 0xAA;  // fill pass_buffer[60 ..];
+  puts("Please set a password for your account:");
+  if ( fgets(pass_in, 50, stdin) )
+  {
+    strcpy(pass_buffer, pass_in);
+    puts("How many bytes in length is your password?");
+    if ( fgets(pass_len_in, 20, stdin) )
+    {
+      i_pass_len_in = atoi(pass_len_in);
+      printf("You entered: %d\n", i_pass_len_in);
+      puts("Your successfully stored password:");
+      for ( j = 0; i_pass_len_in >= j && j <= 89; ++j )
+        printf("%d ", pass_buffer[j]);
+      putchar(10);
+    }
+  }
+  puts("Enter your hash to access your account!");
+  if ( fgets(pass_in, 50, stdin) )
+  {
+    v9 = strlen(pass_in);
+    if ( v9 && pass_in[v9 - 1] == 10 )
+      pass_in[v9 - 1] = 0;
+    v10 = strtoul(pass_in, &endptr, 10);
+    if ( endptr == pass_in )
+    {
+      printf("No digits were found");
+      __assert_fail("1 == 0", "heartbleed.c", 0x45u, "main");
+    }
+    secret = make_secret(v13);
+    if ( secret == v10 )
+    {
+      stream = fopen("flag.txt", "r");
+      if ( !stream )
+      {
+        perror("Could not open flag.txt");
+        return 1;
+      }
+      if ( fgets(v16, 100, stream) )
+        printf("%s", v16);
+      else
+        puts("Failed to read the flag");
+      fclose(stream);
+    }
+  }
+  free(pass_buffer);
+  return 0;
+}
+
+i did some renamming but i does not change the logic here.
+
+one of the most interesting parts are: the obf_byte array:
+	> look at it: 0C3h, 0FFh, 0C8h, 0C2h, 92h, 9Bh, 8Bh, 0C0h, 80h, 0C2h
+
+The main vulnerability here is this:
+    puts("How many bytes in length is your password?");
+    if ( fgets(pass_len_in, 20, stdin) )
+    {
+      i_pass_len_in = atoi(pass_len_in);
+      printf("You entered: %d\n", i_pass_len_in);
+      puts("Your successfully stored password:");
+      for ( j = 0; i_pass_len_in >= j && j <= 89; ++j )
+        printf("%d ", pass_buffer[j]);
+      putchar(10);
+    }
+look at this one:
+	fgets(pass_len_in, 20, stdin)
+the main idea here is to abuse he opportunity to enter the length and see the buffer
+
+lets write a little python script to revers the  make_secret() and hash() functions
+	> open scrpt.py and run it in IDA:
+		press ctrl + F2 -> select 'python' -> paste the script -> press shift + enter!
+
+you should get some thing like this:
+obf_bytes @ 0x2008
+raw     : [195, 255, 200, 194, 146, 155, 139, 192, 128, 194, 196, 139]
+len     : 12
+decoded: 'iUbh81!j*hn!'
+secret : 15237662580160011234	<--- this is the hash for our program
+
+so the expected output is:
+	A
+	89 			<-- you need to lie here to check the output of the array
+	15237662580160011234	<-- then paste this
+
+and  you will get  the flag:
+flag: picoCTF{d0nt_trust_us3rs}
