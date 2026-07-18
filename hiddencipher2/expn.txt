@@ -1,0 +1,90 @@
+SYS:		UNIX/Linux ELF support
+tools:		IDA pro 9.3
+file extension:	idk :(
+...............
+
+this one you can solve for like 5 minutes!
+first of all lets get look how the program behaves:
+What is 4 * 3? 12
+Encoded flag values:
+1344, 1260, 1188, 1332, 804, 1008, 840, 1476, 1308, 624, 1392, 1248, 1140, 1176, 612, 1248, 588, 1320, 1200, 1140, 1188, 588, 1344, 1248, 612, 1368, 1140, 1224, 660, 684, 612, 1200, 576, 1212, 576, 1500
+
+we need to awnser the math problem what is randomly generated and then we will get the 'Encoded flag'
+
+lets  open IDA and look at the psuedocode we got:
+int __fastcall main(int argc, const char **argv, const char **envp)
+{
+  unsigned int seed; // eax
+  char var_1; // [rsp+Fh] [rbp-21h] BYREF
+  int sign; // [rsp+10h] [rbp-20h] BYREF
+  int var_2; // [rsp+14h] [rbp-1Ch] BYREF
+  int user_input; // [rsp+18h] [rbp-18h] BYREF
+  unsigned int math_answer; // [rsp+1Ch] [rbp-14h]
+  void *ptr; // [rsp+20h] [rbp-10h]
+  unsigned __int64 v11; // [rsp+28h] [rbp-8h]
+
+  v11 = __readfsqword(0x28u);
+  seed = time(nullptr);
+  srand(seed);
+  math_answer = generate_math_question(&var_1, &sign, &var_2);
+  printf("What is %d %c %d? ", sign, var_1, var_2);
+  fflush(stdout);
+  if ( scanf("%d", &user_input) == 1 )
+  {
+    if ( math_answer == user_input )            // if soleved math question
+    {
+      ptr = read_flag_file("flag.txt");
+      if ( ptr )
+      {
+        encode_flag(ptr, math_answer);
+        free(ptr);
+        return 0;
+      }
+      else
+      {
+        return 1;
+      }
+    }
+    else
+    {
+      puts("Wrong answer! No flag for you.");
+      return 1;
+    }
+  }
+  else
+  {
+    puts("Invalid input. Exiting.");
+    return 1;
+  }
+}
+
+the most interesting part is the encode_flag() function.
+	> lets open it!
+you should see something like this:
+nt __fastcall encode_flag(__int64 ptr, int math_answer)
+{
+  int i; // [rsp+1Ch] [rbp-4h]
+
+  puts("Encoded flag values:");
+  for ( i = 0; *(i + ptr); ++i )
+  {
+    printf("%d", math_answer * *(i + ptr));
+    if ( *(i + 1LL + ptr) )
+      printf(", ");
+  }
+  return putchar(10);
+}
+
+the the encryption lays here:
+  for ( i = 0; *(i + ptr); ++i )
+  {
+    printf("%d", math_answer * *(i + ptr));
+    if ( *(i + 1LL + ptr) )
+      printf(", ");
+  }
+
+in this for loop we can se waht it gets the ptr + i pointer aka the ptr[i] and multiply it by math awnser thats it!
+get the code from scrpt.py and run it!
+you should get the flag by then in IDA!
+
+flag: picoCTF{m4th_b3h1nd_c1ph3r_f793d0e0}
