@@ -12,6 +12,7 @@ This repo will have all scripts and code i use to solve this chalanges.
 > - WSL - Windows Subsystem Linux (Ubuntu)&emsp;: For running ELF files
 > - VS code &emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;: For scripting or taking notes
 > - ImHex&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;: For binary Patching etc
+> - Wireshark &emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;  : For traffic analysis
 
 ### How file will be structured:
   1. &emsp;PE or ELF
